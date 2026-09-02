@@ -9,14 +9,17 @@ class DistanceCalculator:
             raise ValueError("Pass 1 to 3 (x, y) measurements")
         self.cans = list(measurements)
 
+
     def _post_to_can(self, i):
         x, y = self.cans[i]
         return float(np.hypot(x, y))
+
 
     def _can_to_can(self, i, j):
         x1, y1 = self.cans[i]
         x2, y2 = self.cans[j]
         return float(np.hypot(x2 - x1, y2 - y1) - 2 * CAN_RADIUS)
+
 
     def all_distances(self):
         result = {}
