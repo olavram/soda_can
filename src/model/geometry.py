@@ -25,59 +25,7 @@ class RigSolver:
         return L, R
 
     def joint(self):
-        L, R = self.arm_tips()
-
-        if self.hJ - self.hL >= self.bL:
-            raise ValueError(f"Left brace too short: hJ-hL={self.hJ - self.hL:.2f} >= bL={self.bL}")
-        if self.hJ - self.hR >= self.bR:
-            raise ValueError(f"Right brace too short: hJ-hR={self.hJ - self.hR:.2f} >= bR={self.bR}")
-
-        rL2 = self.bL**2 - (self.hJ - self.hL)**2
-        rR2 = self.bR**2 - (self.hJ - self.hR)**2
-
-        Lx, Ly = L[0], L[1]
-        Rx, Ry = R[0], R[1]
-
-        ax = 2.0 * (Rx - Lx)
-        ay = 2.0 * (Ry - Ly)
-        c  = rL2 - rR2 - Lx**2 - Ly**2 + Rx**2 + Ry**2
-
-        if abs(ax) >= abs(ay):
-            u = c / ax - Lx
-            v = ay / ax
-            A = v**2 + 1
-            B = -2*u*v - 2*Ly
-            C = u**2 + Ly**2 - rL2
-            disc = B**2 - 4*A*C
-            if disc < 0:
-                raise ValueError("No real joint solution: sphere intersection is empty")
-            Jy1 = (-B + np.sqrt(disc)) / (2*A)
-            Jy2 = (-B - np.sqrt(disc)) / (2*A)
-            Jx1 = (c - ay*Jy1) / ax
-            Jx2 = (c - ay*Jy2) / ax
-        else:
-            u = c / ay - Ly
-            v = ax / ay
-            A = v**2 + 1
-            B = -2*u*v - 2*Lx
-            C = u**2 + Lx**2 - rL2
-            disc = B**2 - 4*A*C
-            if disc < 0:
-                raise ValueError("No real joint solution: sphere intersection is empty")
-            Jx1 = (-B + np.sqrt(disc)) / (2*A)
-            Jx2 = (-B - np.sqrt(disc)) / (2*A)
-            Jy1 = (c - ax*Jx1) / ay
-            Jy2 = (c - ax*Jx2) / ay
-
-        j1 = np.array([Jx1, Jy1, self.hJ])
-        j2 = np.array([Jx2, Jy2, self.hJ])
-        J  = j1 if np.hypot(Jx1, Jy1) <= np.hypot(Jx2, Jy2) else j2
-
-        offset = np.hypot(J[0], J[1])
-        if offset > 3.0:
-            print(f"WARNING: joint {offset:.2f} cm from post axis — inputs may be inconsistent")
-
-        return J
+        return np.array([0.0, 0.0, self.hJ])
 
     def pole_tip(self):
         J    = self.joint()
@@ -164,20 +112,11 @@ class RigSolver:
     def check_warnings(self):
         warnings = []
 
-        if self.hJ - self.hL >= self.bL:
-            warnings.append(f"Left brace cannot reach joint: hJ-hL={self.hJ - self.hL:.2f} >= bL={self.bL}")
-        if self.hJ - self.hR >= self.bR:
-            warnings.append(f"Right brace cannot reach joint: hJ-hR={self.hJ - self.hR:.2f} >= bR={self.bR}")
-
         try:
-            J         = self.joint()
-            offset    = np.hypot(J[0], J[1])
             P         = self.pole_tip()
             L, R      = self.arm_tips()
             threshold = 0.1 * self.Lp
 
-            if offset > 3.0:
-                warnings.append(f"Joint {offset:.2f} cm from post axis — inputs may be inconsistent")
             if np.hypot(P[0] - L[0], P[1] - L[1]) < threshold:
                 warnings.append(f"Pole tip too close to left arm tip (threshold {threshold:.1f} cm) — rL sensitivity degraded")
             if np.hypot(P[0] - R[0], P[1] - R[1]) < threshold:
