@@ -10,8 +10,6 @@ class RigSolver:
         self.aR = params.aR
         self.hL = params.hL
         self.hR = params.hR
-        self.bL = params.bL
-        self.bR = params.bR
         self.hJ = params.hJ
         self.Lp = params.Lp
         self.rL = params.rL
@@ -69,7 +67,7 @@ class RigSolver:
         if not above:
             raise ValueError("No pole tip above joint: beam would never reach the floor")
 
-        return max(above, key=lambda P: P[2])
+        return above[0]
 
     def ray_cast(self):
         J         = self.joint()
@@ -83,10 +81,9 @@ class RigSolver:
         return J + t * direction
 
     def distances(self):
-        J = self.joint()
         C = self.ray_cast()
         return {
-            'D_joint': float(np.hypot(C[0] - J[0], C[1] - J[1])),
+            'D_joint': float(np.hypot(C[0], C[1])),
             'D_post':  float(np.hypot(C[0], C[1])),
         }
 

@@ -8,12 +8,19 @@ class RigParameters:
     aR: float
     hL: float
     hR: float
-    bL: float
-    bR: float
     hJ: float
     Lp: float
     rL: float
     rR: float
+
+    @classmethod
+    def from_rig(cls, rig: dict, rL: float, rR: float) -> "RigParameters":
+        return cls(
+            aL=rig["reach_left"],      aR=rig["reach_right"],
+            hL=rig["arm_height_left"], hR=rig["arm_height_right"],
+            hJ=rig["joint_height"],    Lp=rig["pole_length"],
+            rL=rL, rR=rR,
+        )
 
     def get(self, param: Param) -> float:
         return getattr(self, param.value)

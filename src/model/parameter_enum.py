@@ -6,8 +6,6 @@ class Param(Enum):
     AR = "aR"
     HL = "hL"
     HR = "hR"
-    BL = "bL"
-    BR = "bR"
     HJ = "hJ"
     LP = "Lp"
     RL = "rL"
