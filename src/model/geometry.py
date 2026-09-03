@@ -63,7 +63,6 @@ class RigSolver:
             np.array([e1 + f1*z2, e2 + f2*z2, z2]),
         ]
         above = [P for P in candidates if P[2] > self.hJ]
-
         if not above:
             raise ValueError("No pole tip above joint: beam would never reach the floor")
 
@@ -72,12 +71,14 @@ class RigSolver:
     def ray_cast(self):
         J         = self.joint()
         P         = self.pole_tip()
+        P         = P + np.array([0.0, 0.0, 1.3])
         direction = J - P
 
         if direction[2] >= 0:
             raise ValueError("Ray direction is upward — cannot reach the floor")
 
         t = self.hJ / (-direction[2])
+
         return J + t * direction
 
     def distances(self):
