@@ -2,11 +2,11 @@ from enum import Enum
 
 
 class Param(Enum):
-    AL = "aL"
-    AR = "aR"
-    HL = "hL"
-    HR = "hR"
-    HJ = "hJ"
-    LP = "Lp"
-    RL = "rL"
-    RR = "rR"
+    REACH_LEFT        = "reach_left"
+    REACH_RIGHT       = "reach_right"
+    ARM_HEIGHT_LEFT   = "arm_height_left"
+    ARM_HEIGHT_RIGHT  = "arm_height_right"
+    JOINT_HEIGHT      = "joint_height"
+    POLE_LENGTH       = "pole_length"
+    LASER_RANGE_LEFT  = "laser_range_left"
+    LASER_RANGE_RIGHT = "laser_range_right"

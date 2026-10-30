@@ -6,63 +6,75 @@ from .parameter_enum import Param
 
 class RigSolver:
     def __init__(self, params: RigParameters):
-        self.aL = params.aL
-        self.aR = params.aR
-        self.hL = params.hL
-        self.hR = params.hR
-        self.hJ = params.hJ
-        self.Lp = params.Lp
-        self.rL = params.rL
-        self.rR = params.rR
+        self.reach_left        = params.reach_left
+        self.reach_right       = params.reach_right
+        self.arm_height_left   = params.arm_height_left
+        self.arm_height_right  = params.arm_height_right
+        self.joint_height      = params.joint_height
+        self.pole_length       = params.pole_length
+        self.laser_range_left  = params.laser_range_left
+        self.laser_range_right = params.laser_range_right
         self._params = params
 
     def arm_tips(self):
         s = 1.0 / np.sqrt(2)
-        L = np.array([-self.aL * s, -self.aL * s, self.hL])
-        R = np.array([ self.aR * s, -self.aR * s, self.hR])
+        L = np.array([-self.reach_left * s,  -self.reach_left * s,  self.arm_height_left])
+        R = np.array([ self.reach_right * s, -self.reach_right * s, self.arm_height_right])
         return L, R
 
     def joint(self):
-        return np.array([0.0, 0.0, self.hJ])
+        return np.array([0.0, 0.0, self.joint_height])
 
     def pole_tip(self):
-        J    = self.joint()
-        L, R = self.arm_tips()
+        joint               = self.joint()
+        left_tip, right_tip = self.arm_tips()
 
-        Jx, Jy, Jz = J
-        J2 = float(np.dot(J, J))
-        L2 = float(np.dot(L, L))
-        R2 = float(np.dot(R, R))
+        joint_x, joint_y, joint_z = joint
 
-        a1 = 2*(Jx - L[0]);  b1 = 2*(Jy - L[1]);  c1 = 2*(Jz - L[2]);  d1 = self.rL**2 - self.Lp**2 + J2 - L2
-        a2 = 2*(Jx - R[0]);  b2 = 2*(Jy - R[1]);  c2 = 2*(Jz - R[2]);  d2 = self.rR**2 - self.Lp**2 + J2 - R2
+        joint_sq     = float(np.dot(joint, joint))
+        left_tip_sq  = float(np.dot(left_tip, left_tip))
+        right_tip_sq = float(np.dot(right_tip, right_tip))
 
-        det = a1*b2 - a2*b1
+        left_nx  = 2*(joint_x - left_tip[0])
+        left_ny  = 2*(joint_y - left_tip[1])
+        left_nz  = 2*(joint_z - left_tip[2])
+        left_rhs = self.laser_range_left**2 - self.pole_length**2 + joint_sq - left_tip_sq
+
+        right_nx  = 2*(joint_x - right_tip[0])
+        right_ny  = 2*(joint_y - right_tip[1])
+        right_nz  = 2*(joint_z - right_tip[2])
+        right_rhs = self.laser_range_right**2 - self.pole_length**2 + joint_sq - right_tip_sq
+
+        det = left_nx*right_ny - right_nx*left_ny
         if abs(det) < 1e-10:
             raise ValueError("Degenerate geometry: trilateration planes are parallel")
 
-        e1 = (d1*b2 - d2*b1) / det;  f1 = (-c1*b2 + c2*b1) / det
-        e2 = (a1*d2 - a2*d1) / det;  f2 = (-a1*c2 + a2*c1) / det
+        line_x0    = (left_rhs*right_ny - right_rhs*left_ny) / det
+        line_dx_dz = (-left_nz*right_ny + right_nz*left_ny) / det
+        line_y0    = (left_nx*right_rhs - right_nx*left_rhs) / det
+        line_dy_dz = (-left_nx*right_nz + right_nx*left_nz) / det
 
-        g1 = e1 - Jx
-        g2 = e2 - Jy
+        offset_x = line_x0 - joint_x
+        offset_y = line_y0 - joint_y
 
-        A    = f1**2 + f2**2 + 1
-        B    = 2*(g1*f1 + g2*f2 - Jz)
-        C    = g1**2 + g2**2 + Jz**2 - self.Lp**2
-        disc = B**2 - 4*A*C
+        quad_a       = line_dx_dz**2 + line_dy_dz**2 + 1
+        quad_b       = 2*(offset_x*line_dx_dz + offset_y*line_dy_dz - joint_z)
+        quad_c       = offset_x**2 + offset_y**2 + joint_z**2 - self.pole_length**2
+        discriminant = quad_b**2 - 4*quad_a*quad_c
 
-        if disc < 0:
+        if discriminant < 0:
             raise ValueError("No real pole tip solution: range measurements describe no realisable geometry")
 
-        z1 = (-B + np.sqrt(disc)) / (2*A)
-        z2 = (-B - np.sqrt(disc)) / (2*A)
+        z_plus  = (-quad_b + np.sqrt(discriminant)) / (2*quad_a)
+        z_minus = (-quad_b - np.sqrt(discriminant)) / (2*quad_a)
 
         candidates = [
-            np.array([e1 + f1*z1, e2 + f2*z1, z1]),
-            np.array([e1 + f1*z2, e2 + f2*z2, z2]),
+            np.array([line_x0 + line_dx_dz*z_plus,  line_y0 + line_dy_dz*z_plus,  z_plus]),
+            np.array([line_x0 + line_dx_dz*z_minus, line_y0 + line_dy_dz*z_minus, z_minus]),
         ]
-        above = [P for P in candidates if P[2] > self.hJ]
+
+        above = [P for P in candidates if P[2] > self.joint_height]
+
         if not above:
             raise ValueError("No pole tip above joint: beam would never reach the floor")
 
@@ -77,7 +89,7 @@ class RigSolver:
         if direction[2] >= 0:
             raise ValueError("Ray direction is upward — cannot reach the floor")
 
-        t = self.hJ / (-direction[2])
+        t = self.joint_height / (-direction[2])
 
         return J + t * direction
 
@@ -91,8 +103,8 @@ class RigSolver:
     def cross_check(self):
         P       = self.pole_tip()
         D_joint = self.distances()['D_joint']
-        theta   = np.arcsin((P[2] - self.hJ) / self.Lp)
-        D_check = self.hJ / np.tan(theta)
+        theta   = np.arcsin((P[2] - self.joint_height) / self.pole_length)
+        D_check = self.joint_height / np.tan(theta)
 
         if abs(D_check - D_joint) > 0.1:
             print(f"WARNING: cross-check mismatch {abs(D_check - D_joint):.3f} cm")
@@ -113,12 +125,12 @@ class RigSolver:
         try:
             P         = self.pole_tip()
             L, R      = self.arm_tips()
-            threshold = 0.1 * self.Lp
+            threshold = 0.1 * self.pole_length
 
             if np.hypot(P[0] - L[0], P[1] - L[1]) < threshold:
-                warnings.append(f"Pole tip too close to left arm tip (threshold {threshold:.1f} cm) — rL sensitivity degraded")
+                warnings.append(f"Pole tip too close to left arm tip (threshold {threshold:.1f} cm) — laser_range_left sensitivity degraded")
             if np.hypot(P[0] - R[0], P[1] - R[1]) < threshold:
-                warnings.append(f"Pole tip too close to right arm tip (threshold {threshold:.1f} cm) — rR sensitivity degraded")
+                warnings.append(f"Pole tip too close to right arm tip (threshold {threshold:.1f} cm) — laser_range_right sensitivity degraded")
 
         except ValueError as e:
             warnings.append(f"Geometry error: {e}")
