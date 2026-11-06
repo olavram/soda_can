@@ -10,7 +10,7 @@ class RigParameters:
     arm_height_right: float
     joint_height: float
     pole_length: float
-    laser_range_left: float
+    measurement_range_left: float
     laser_range_right: float
 
     @classmethod
@@ -19,7 +19,7 @@ class RigParameters:
             reach_left=rig["reach_left"],           reach_right=rig["reach_right"],
             arm_height_left=rig["arm_height_left"], arm_height_right=rig["arm_height_right"],
             joint_height=rig["joint_height"],       pole_length=rig["pole_length"],
-            laser_range_left=laser_range_left,      laser_range_right=laser_range_right,
+            measurement_range_left=laser_range_left,      laser_range_right=laser_range_right,
         )
 
     def get(self, param: Param) -> float:

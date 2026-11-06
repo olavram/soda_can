@@ -3,6 +3,8 @@ import numpy as np
 from .parameters import RigParameters
 from .parameter_enum import Param
 
+OFFSET = 1.3
+
 
 class RigSolver:
     def __init__(self, params: RigParameters):
@@ -12,8 +14,8 @@ class RigSolver:
         self.arm_height_right  = params.arm_height_right
         self.joint_height      = params.joint_height
         self.pole_length       = params.pole_length
-        self.laser_range_left  = params.laser_range_left
-        self.laser_range_right = params.laser_range_right
+        self.measurement_range_left  = params.measurement_range_left
+        self.measurement_range_right = params.measurement_range_right
         self._params = params
 
     def arm_tips(self):
@@ -38,7 +40,7 @@ class RigSolver:
         left_nx  = 2*(joint_x - left_tip[0])
         left_ny  = 2*(joint_y - left_tip[1])
         left_nz  = 2*(joint_z - left_tip[2])
-        left_rhs = self.laser_range_left**2 - self.pole_length**2 + joint_sq - left_tip_sq
+        left_rhs = self.measurement_range_left ** 2 - self.pole_length ** 2 + joint_sq - left_tip_sq
 
         right_nx  = 2*(joint_x - right_tip[0])
         right_ny  = 2*(joint_y - right_tip[1])
@@ -83,7 +85,7 @@ class RigSolver:
     def ray_cast(self):
         J         = self.joint()
         P         = self.pole_tip()
-        P         = P + np.array([0.0, 0.0, 1.3])
+        P         = P + np.array([0.0, 0.0, OFFSET])
         direction = J - P
 
         if direction[2] >= 0:
